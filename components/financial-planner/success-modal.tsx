@@ -112,7 +112,7 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
         import("jspdf"),
         import("html-to-image"),
       ])
-      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: "#ffffff", height: el.scrollHeight })
+      const dataUrl = await toPng(el, { quality: 0.95 })
       const img = new Image()
       img.src = dataUrl
       await new Promise((resolve) => { img.onload = resolve })
@@ -203,14 +203,14 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
           {pieData.length > 0 && (
             <div className="p-4 bg-secondary/30 rounded-xl">
               <h4 className="font-semibold text-foreground text-sm mb-2">Budget Distribution</h4>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart margin={{ top: 40, right: 30, bottom: 30, left: 30 }}>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
                     innerRadius={55}
-                    outerRadius={80}
+                    outerRadius={90}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -260,9 +260,13 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
                 <div className={`h-3 w-4/6 rounded ${remainingBudget < 0 ? "bg-red-200/70" : "bg-indigo-200/70"}`} />
               </div>
             ) : aiSummary ? (
-              <p className={`text-sm leading-relaxed ${remainingBudget < 0 ? "text-red-900" : "text-indigo-900"}`}>
-                {aiSummary}
-              </p>
+              <div className="space-y-3">
+                {aiSummary.split(/(?=\d\.\s)/).filter(text => text.trim().length > 0).map((point, index) => (
+                  <p key={index} className={`text-sm leading-relaxed ${remainingBudget < 0 ? "text-red-900" : "text-indigo-800"}`}>
+                    {point.trim()}
+                  </p>
+                ))}
+              </div>
             ) : (
               <p className={`text-sm italic ${remainingBudget < 0 ? "text-red-700" : "text-indigo-700"}`}>
                 {remainingBudget < 0
@@ -276,12 +280,12 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
         <div className="flex gap-3 pt-2">
           <Button
             variant="outline"
-            className="flex-1 gap-2"
+            className="flex-1 gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleDownloadPDF}
-            disabled={pdfLoading}
+            disabled={aiLoading || isGeneratingPDF}
           >
             <Download className="w-4 h-4" />
-            {pdfLoading ? "Generating…" : "Save as PDF"}
+            {isGeneratingPDF ? "Generating…" : aiLoading ? "Loading AI…" : "Save as PDF"}
           </Button>
           <Button className="flex-1 gap-2" onClick={onReset}>
             <RotateCcw className="w-4 h-4" />
@@ -304,7 +308,7 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
         {/* PDF template at full opacity so html-to-image can capture it */}
         <div
           id={PDF_TEMPLATE_ID}
-          className="fixed top-0 left-0 z-[9998] w-[800px] h-fit bg-white text-black"
+          className="absolute top-0 left-0 z-40 w-[800px] h-[1131px] bg-white text-black overflow-hidden"
           style={{ fontFamily: "sans-serif", color: "#111827" }}
         >
       <div style={{ padding: "40px 48px 0" }}>
@@ -426,13 +430,13 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
         {pieData.length > 0 && (
           <div style={{ marginBottom: 20, height: 450, display: "flex", flexDirection: "column", alignItems: "center" }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8, alignSelf: "flex-start" }}>Budget Distribution</p>
-            <PieChart width={440} height={360}>
+            <PieChart width={440} height={360} margin={{ top: 40, right: 60, bottom: 30, left: 60 }}>
               <Pie
                 data={pieData}
                 cx={220}
                 cy={160}
                 innerRadius={65}
-                outerRadius={110}
+                outerRadius={90}
                 paddingAngle={3}
                 dataKey="value"
                 isAnimationActive={false}
@@ -458,8 +462,12 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
         {(aiSummary || remainingBudget > 0) && (
           <div style={{ backgroundColor: "#eef2ff", borderRadius: 10, padding: "14px 20px", marginBottom: 20, borderLeft: "4px solid #6366f1" }}>
             <p style={{ fontSize: 12, fontWeight: 700, color: "#4338ca", marginBottom: 6 }}>AI Advisor Suggestion</p>
-            <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.6, margin: 0 }}>
-              {aiSummary || "Consider directing your unallocated funds into an emergency fund or boosting your savings to reach the 20% target."}
+            <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+              {aiSummary
+                ? aiSummary.split(/(?=\d\.\s)/).filter(t => t.trim().length > 0).map((point, i) => (
+                    <span key={i} style={{ display: "block", marginBottom: i < 2 ? 8 : 0 }}>{point.trim()}</span>
+                  ))
+                : "Consider directing your unallocated funds into an emergency fund or boosting your savings to reach the 20% target."}
             </p>
           </div>
         )}
@@ -468,8 +476,6 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
         <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, textAlign: "center", fontSize: 10, color: "#9ca3af" }}>
           Generated by Smart Financial Planner · {new Date().toLocaleDateString("en-MY", { year: "numeric", month: "long", day: "numeric" })} · For personal planning purposes only.
         </div>
-        {/* Physical spacer — prevents html-to-image from clipping the last element */}
-        <div className="h-12 w-full shrink-0" />
       </div>
         </div>
       </>

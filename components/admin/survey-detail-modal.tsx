@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { CheckCircle, Download } from "lucide-react"
+import { Cell, Pie, PieChart } from "recharts"
 import type { SurveyResponse } from "./types"
 
 const ADMIN_PDF_TEMPLATE_ID = "admin-survey-pdf-template"
@@ -29,8 +30,41 @@ export function SurveyDetailModal({
   const captureRef = useRef<HTMLDivElement>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
+  const [isLoadingAI, setIsLoadingAI] = useState(false)
+
+  useEffect(() => {
+    if (!open || !survey) return
+    setAiSuggestion(null)
+    setIsLoadingAI(true)
+    const unallocated =
+      survey.expectedIncome - survey.needs.total - survey.wants.total - survey.savings.total
+    fetch("/api/analyze-budget", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        income: survey.expectedIncome,
+        needs: survey.needs,
+        wants: survey.wants,
+        savings: survey.savings,
+        unallocated,
+      }),
+    })
+      .then((res) => res.json())
+      .then((data) => setAiSuggestion(data.suggestion ?? data.error ?? null))
+      .catch(() => setAiSuggestion(null))
+      .finally(() => setIsLoadingAI(false))
+  }, [open, survey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!survey) return null
+
+  const PIE_COLORS = ["#6366f1", "#f59e0b", "#10b981"]
+  const unallocated = survey.expectedIncome - survey.needs.total - survey.wants.total - survey.savings.total
+  const pieData = [
+    { name: "Needs", value: survey.needs.total },
+    { name: "Wants", value: survey.wants.total },
+    { name: "Savings", value: survey.savings.total },
+  ].filter((d) => d.value > 0)
 
   const formatCurrency = (value: number) =>
     `RM ${value.toLocaleString("en-MY", { minimumFractionDigits: 2 })}`
@@ -46,7 +80,7 @@ export function SurveyDetailModal({
         import("jspdf"),
         import("html-to-image"),
       ])
-      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: "#ffffff", height: el.scrollHeight })
+      const dataUrl = await toPng(el, { quality: 0.95 })
       const img = new Image()
       img.src = dataUrl
       await new Promise((resolve) => { img.onload = resolve })
@@ -85,12 +119,12 @@ export function SurveyDetailModal({
             <Button
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={handleDownloadPDF}
-              disabled={pdfLoading}
+              disabled={isLoadingAI || pdfLoading}
             >
               <Download className="w-4 h-4" />
-              {pdfLoading ? "Generating PDF…" : "Download PDF"}
+              {pdfLoading ? "Generating PDF…" : isLoadingAI ? "Loading AI…" : "Download PDF"}
             </Button>
           </div>
         </DialogHeader>
@@ -301,10 +335,10 @@ export function SurveyDetailModal({
         {/* PDF template rendered at full opacity for html-to-image */}
         <div
           id={ADMIN_PDF_TEMPLATE_ID}
-          className="fixed top-0 left-0 z-[9998] w-[800px] h-fit bg-white text-black"
+          className="absolute top-0 left-0 z-40 w-[1000px] h-[1414px] bg-white text-black overflow-hidden"
           style={{ fontFamily: "sans-serif", color: "#111827" }}
         >
-        <div style={{ padding: "40px 48px" }}>
+        <div style={{ padding: "48px 60px" }}>
           {/* Header */}
           <div style={{ borderBottom: "3px solid #6366f1", paddingBottom: 16, marginBottom: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
@@ -429,12 +463,57 @@ export function SurveyDetailModal({
             </div>
           </div>
 
+          {/* Pie Chart */}
+          {pieData.length > 0 && (
+            <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8, alignSelf: "flex-start" }}>Budget Distribution</p>
+              <PieChart width={500} height={300} margin={{ top: 40, right: 60, bottom: 30, left: 60 }}>
+                <Pie
+                  data={pieData}
+                  cx={250}
+                  cy={130}
+                  innerRadius={60}
+                  outerRadius={85}
+                  paddingAngle={3}
+                  dataKey="value"
+                  isAnimationActive={false}
+                  label={({ name, value }: { name: string; value: number }) => `${name}: ${formatCurrency(value)}`}
+                  labelLine={true}
+                >
+                  {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                </Pie>
+              </PieChart>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, fontSize: 12, fontWeight: 600, color: "#374151" }}>
+                {pieData.map((entry, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                    {entry.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* AI Advisor Suggestion */}
+          <div style={{ backgroundColor: "#eef2ff", borderRadius: 10, padding: "14px 20px", marginBottom: 20, borderLeft: "4px solid #6366f1" }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#4338ca", marginBottom: 6 }}>AI Advisor Suggestion</p>
+            {isLoadingAI ? (
+              <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", margin: 0 }}>Generating suggestion…</p>
+            ) : aiSuggestion ? (
+              <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.7, margin: 0 }}>
+                {aiSuggestion.split(/(?=\d\.\s)/).filter(t => t.trim().length > 0).map((point, i) => (
+                  <span key={i} style={{ display: "block", marginBottom: i < 2 ? 8 : 0 }}>{point.trim()}</span>
+                ))}
+              </p>
+            ) : (
+              <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", margin: 0 }}>No suggestion available.</p>
+            )}
+          </div>
+
           {/* Footer */}
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, textAlign: "center", fontSize: 10, color: "#9ca3af" }}>
             Smart Financial Planner Admin Report · Exported {new Date().toLocaleDateString("en-MY", { year: "numeric", month: "long", day: "numeric" })} · Confidential
           </div>
-          {/* Physical spacer — prevents html-to-image from clipping the last element */}
-          <div className="h-12 w-full shrink-0" />
         </div>
         </div>
       </>

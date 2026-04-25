@@ -46,14 +46,20 @@ export async function POST(req: NextRequest) {
   const absAmount = Math.abs(unallocated).toFixed(2)
 
   const prompt =
-    `You are a strict, direct financial advisor.\n` +
+    `You are a strategic financial advisor.\n` +
     `User's data: Needs: ${JSON.stringify(needs)}, Wants: ${JSON.stringify(wants)}, Savings: ${JSON.stringify(savings)}.\n` +
     `Leftover/Overspent: RM ${absAmount} ${isOverspending ? "OVER BUDGET" : "UNALLOCATED"}.\n\n` +
-    `Provide EXACTLY ONE highly specific, actionable sentence telling them what to do with this exact amount based on their data.\n` +
+    `Provide exactly 3 distinct, actionable options for handling this exact amount based on their data.\n` +
     `RULES:\n` +
-    `1. DO NOT state their current balance or restate the obvious.\n` +
-    `2. Start immediately with an action verb (e.g., 'Move', 'Cut', 'Allocate', 'Shift').\n` +
-    `3. Be brutally concise. No introductory filler.`
+    `1. Do not write an intro or outro paragraph. Start immediately with '1. '\n` +
+    `2. Make each point a single, concise sentence.\n` +
+    `3. If UNALLOCATED, suggest different vehicles (e.g., Option 1 for a specific Debt/Need, Option 2 for a specific Investment/Saving, Option 3 for an emergency fund or want).\n` +
+    `4. If OVER BUDGET, suggest 3 specific, different line items they currently spend heavily on that they should cut back.\n` +
+    `5. Separate each numbered point with a double newline (\n\n). Do not write them all on one line.\n` +
+    `6. Format strictly as a numbered list:\n` +
+    `1. [Option]\n\n` +
+    `2. [Option]\n\n` +
+    `3. [Option]`
 
   console.log(`[analyze-budget] Sending prompt to Gemini. isOverspending=${isOverspending}, unallocated=${unallocated}`)
 
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
     const result = await model.generateContent({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048, // Massively increased to accommodate reasoning tokens
         temperature: 0.4,
       },
     })
