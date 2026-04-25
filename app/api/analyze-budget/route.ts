@@ -1,0 +1,91 @@
+import { NextRequest, NextResponse } from "next/server"
+import { GoogleGenerativeAI } from "@google/generative-ai"
+
+export async function POST(req: NextRequest) {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    console.error("[analyze-budget] GEMINI_API_KEY is not set in environment variables.")
+    return NextResponse.json(
+      { suggestion: null, error: "GEMINI_API_KEY is not configured on the server." },
+      { status: 500 }
+    )
+  }
+
+  let body: {
+    income: number
+    needs: Record<string, unknown>
+    wants: Record<string, unknown>
+    savings: Record<string, unknown>
+    unallocated: number
+  }
+
+  try {
+    body = await req.json()
+  } catch (err) {
+    console.error("[analyze-budget] Failed to parse request body:", err)
+    return NextResponse.json({ suggestion: null, error: "Invalid JSON body." }, { status: 400 })
+  }
+
+  const { income, needs, wants, savings, unallocated } = body
+
+  if (
+    typeof income !== "number" ||
+    typeof unallocated !== "number" ||
+    !needs ||
+    !wants ||
+    !savings
+  ) {
+    console.error("[analyze-budget] Missing or invalid fields:", { income, unallocated, needs: !!needs, wants: !!wants, savings: !!savings })
+    return NextResponse.json(
+      { suggestion: null, error: "Missing or invalid fields." },
+      { status: 400 }
+    )
+  }
+
+  const isOverspending = unallocated < 0
+  const absAmount = Math.abs(unallocated).toFixed(2)
+
+  const prompt =
+    `You are a strict, direct financial advisor.\n` +
+    `User's data: Needs: ${JSON.stringify(needs)}, Wants: ${JSON.stringify(wants)}, Savings: ${JSON.stringify(savings)}.\n` +
+    `Leftover/Overspent: RM ${absAmount} ${isOverspending ? "OVER BUDGET" : "UNALLOCATED"}.\n\n` +
+    `Provide EXACTLY ONE highly specific, actionable sentence telling them what to do with this exact amount based on their data.\n` +
+    `RULES:\n` +
+    `1. DO NOT state their current balance or restate the obvious.\n` +
+    `2. Start immediately with an action verb (e.g., 'Move', 'Cut', 'Allocate', 'Shift').\n` +
+    `3. Be brutally concise. No introductory filler.`
+
+  console.log(`[analyze-budget] Sending prompt to Gemini. isOverspending=${isOverspending}, unallocated=${unallocated}`)
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey)
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" })
+
+    const result = await model.generateContent({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: {
+        maxOutputTokens: 1024,
+        temperature: 0.4,
+      },
+    })
+
+    const responseText = result.response.text().trim()
+    if (!responseText) {
+      console.error("[analyze-budget] Gemini returned an empty response.")
+      return NextResponse.json(
+        { suggestion: null, error: "AI returned an empty response." },
+        { status: 502 }
+      )
+    }
+
+    console.log("[analyze-budget] Gemini responded successfully:", responseText)
+    return NextResponse.json({ suggestion: responseText })
+  } catch (err) {
+    console.error("[GEMINI_ERROR]:", err)
+    const message = err instanceof Error ? err.message : "Unknown API error"
+    return NextResponse.json(
+      { suggestion: null, error: message },
+      { status: 502 }
+    )
+  }
+}
