@@ -26,16 +26,14 @@ export function StepProfile({ data, updateData, onNext }: StepProfileProps) {
   const [email, setEmail] = useState(data.email)
   const [gender, setGender] = useState(data.gender)
   const [hpNo, setHpNo] = useState(data.hpNo)
-  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(data.dateOfBirth ?? null)
   const [occupation, setOccupation] = useState(data.occupation)
   const [studentLevel, setStudentLevel] = useState(data.studentLevel)
-  const [age, setAge] = useState<number | null>(
-    data.dateOfBirth ? CURRENT_YEAR - data.dateOfBirth.getFullYear() : null
-  )
-  const [yearsToPension, setYearsToPension] = useState<number | null>(
-    data.dateOfBirth ? Math.max(0, 55 - (CURRENT_YEAR - data.dateOfBirth.getFullYear())) : null
-  )
   const [isGoogleUser, setIsGoogleUser] = useState(false)
+
+  // Derive age and yearsToPension directly — no state, no effect, no loop
+  const age = data.dateOfBirth ? CURRENT_YEAR - data.dateOfBirth.getFullYear() : null
+  const yearsToPension = age !== null ? Math.max(0, 55 - age) : null
+
   const latestAllowedDate = new Date(CURRENT_YEAR - 18, 11, 31)
   const earliestAllowedDate = new Date(1940, 0, 1)
 
@@ -52,7 +50,6 @@ export function StepProfile({ data, updateData, onNext }: StepProfileProps) {
     if (data.email && data.email !== email) setEmail(data.email)
     if (data.gender && data.gender !== gender) setGender(data.gender)
     if (data.hpNo && data.hpNo !== hpNo) setHpNo(data.hpNo)
-    if (data.dateOfBirth && data.dateOfBirth !== dateOfBirth) setDateOfBirth(data.dateOfBirth)
     if (data.occupation && data.occupation !== occupation) setOccupation(data.occupation)
     if (data.studentLevel && data.studentLevel !== studentLevel) setStudentLevel(data.studentLevel)
   }, [
@@ -60,14 +57,12 @@ export function StepProfile({ data, updateData, onNext }: StepProfileProps) {
     data.email,
     data.gender,
     data.hpNo,
-    data.dateOfBirth,
     data.occupation,
     data.studentLevel,
     name,
     email,
     gender,
     hpNo,
-    dateOfBirth,
     occupation,
     studentLevel,
   ])
@@ -92,19 +87,7 @@ export function StepProfile({ data, updateData, onNext }: StepProfileProps) {
     return () => unsubscribe()
   }, [email, name, updateData])
 
-  useEffect(() => {
-    if (!dateOfBirth) {
-      setAge(null)
-      setYearsToPension(null)
-      updateData({ dateOfBirth: null })
-      return
-    }
-
-    const computedAge = CURRENT_YEAR - dateOfBirth.getFullYear()
-    setAge(computedAge)
-    setYearsToPension(Math.max(0, 55 - computedAge))
-    updateData({ dateOfBirth })
-  }, [dateOfBirth, updateData])
+  // ── DOB effect removed ── age and yearsToPension are now derived inline above ──
 
   return (
     <div
@@ -209,15 +192,15 @@ export function StepProfile({ data, updateData, onNext }: StepProfileProps) {
                     variant="outline"
                     className="h-11 w-full justify-start text-left font-normal"
                   >
-                    {dateOfBirth ? formatDate(dateOfBirth) : "Select your date"}
+                    {data.dateOfBirth ? formatDate(data.dateOfBirth) : "Select your date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent align="start" className="w-auto p-0">
                   <CalendarPicker
                     mode="single"
                     captionLayout="dropdown"
-                    selected={dateOfBirth ?? undefined}
-                    onSelect={(date) => setDateOfBirth(date ?? null)}
+                    selected={data.dateOfBirth ?? undefined}
+                    onSelect={(date) => updateData({ dateOfBirth: date ?? null })}
                     fromYear={1940}
                     toYear={CURRENT_YEAR - 18}
                     disabled={{ before: earliestAllowedDate, after: latestAllowedDate }}

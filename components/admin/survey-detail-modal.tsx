@@ -14,8 +14,6 @@ import { CheckCircle, Download } from "lucide-react"
 import { Cell, Pie, PieChart } from "recharts"
 import type { SurveyResponse } from "./types"
 
-const ADMIN_PDF_TEMPLATE_ID = "admin-survey-pdf-template"
-
 interface SurveyDetailModalProps {
   survey: SurveyResponse | null
   open: boolean
@@ -28,6 +26,7 @@ export function SurveyDetailModal({
   onOpenChange,
 }: SurveyDetailModalProps) {
   const captureRef = useRef<HTMLDivElement>(null)
+  const pdfRef = useRef<HTMLDivElement>(null)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null)
@@ -73,14 +72,17 @@ export function SurveyDetailModal({
     setIsGeneratingPDF(true)
     setPdfLoading(true)
     try {
-      await new Promise<void>((resolve) => setTimeout(resolve, 500))
-      const el = document.getElementById(ADMIN_PDF_TEMPLATE_ID)
-      if (!el) throw new Error("Admin PDF template element not found in DOM")
+      const element = pdfRef.current
+      if (!element) throw new Error("Admin PDF template element not found")
+      await new Promise<void>((resolve) => setTimeout(resolve, 300))
       const [{ default: jsPDF }, { toPng }] = await Promise.all([
         import("jspdf"),
         import("html-to-image"),
       ])
-      const dataUrl = await toPng(el, { quality: 0.95 })
+      const dataUrl = await toPng(element, {
+        quality: 0.95,
+        pixelRatio: 2,
+      })
       const img = new Image()
       img.src = dataUrl
       await new Promise((resolve) => { img.onload = resolve })
@@ -322,22 +324,20 @@ export function SurveyDetailModal({
       </DialogContent>
     </Dialog>
 
-    {/* ── PDF overlay + template: only mounted during capture ── */}
+    {/* Spinner overlay */}
     {isGeneratingPDF && (
-      <>
-        {/* Full-screen overlay so admin sees a spinner, not the raw template */}
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70">
-          <div className="flex flex-col items-center gap-3 rounded-xl bg-white px-8 py-6 shadow-2xl">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="text-sm font-semibold text-gray-700">Generating Report…</p>
-          </div>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-white px-8 py-6 shadow-2xl">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <p className="text-sm font-semibold text-gray-700">Generating Report…</p>
         </div>
-        {/* PDF template rendered at full opacity for html-to-image */}
-        <div
-          id={ADMIN_PDF_TEMPLATE_ID}
-          className="absolute top-0 left-0 z-40 w-[1000px] h-[1414px] bg-white text-black overflow-hidden"
-          style={{ fontFamily: "sans-serif", color: "#111827" }}
-        >
+      </div>
+    )}
+    {/* Zero-height wrapper — keeps template in flow so scrollHeight is accurate */}
+    {survey && (
+      <div className="fixed top-0 left-[-9999px] z-[-50]">
+        {/* Actual PDF canvas — html-to-image captures this element */}
+        <div ref={pdfRef} className="w-[1000px] h-max bg-white" style={{ fontFamily: "sans-serif", color: "#111827" }}>
         <div style={{ padding: "48px 60px" }}>
           {/* Header */}
           <div style={{ borderBottom: "3px solid #6366f1", paddingBottom: 16, marginBottom: 24 }}>
@@ -467,27 +467,33 @@ export function SurveyDetailModal({
           {pieData.length > 0 && (
             <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8, alignSelf: "flex-start" }}>Budget Distribution</p>
-              <PieChart width={500} height={300} margin={{ top: 40, right: 60, bottom: 30, left: 60 }}>
+              <PieChart width={700} height={300} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                 <Pie
                   data={pieData}
-                  cx={250}
-                  cy={130}
-                  innerRadius={60}
-                  outerRadius={85}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={130}
                   paddingAngle={3}
                   dataKey="value"
                   isAnimationActive={false}
-                  label={({ name, value }: { name: string; value: number }) => `${name}: ${formatCurrency(value)}`}
-                  labelLine={true}
+                  label={false}
                 >
                   {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
               </PieChart>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, fontSize: 12, fontWeight: 600, color: "#374151" }}>
+              {/* Rich data legend */}
+              <div style={{ width: "100%", maxWidth: 420, marginTop: 16 }}>
                 {pieData.map((entry, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                    {entry.name}
+                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "6px 0", borderBottom: i < pieData.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", backgroundColor: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 }} />
+                      <span style={{ fontWeight: 600, color: "#374151" }}>{entry.name}</span>
+                    </div>
+                    <span style={{ color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
+                      RM {entry.value.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                      {pieData.reduce((s, d) => s + d.value, 0) > 0 ? ` (${(entry.value / pieData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)` : ""}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -500,11 +506,15 @@ export function SurveyDetailModal({
             {isLoadingAI ? (
               <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", margin: 0 }}>Generating suggestion…</p>
             ) : aiSuggestion ? (
-              <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.7, margin: 0 }}>
-                {aiSuggestion.split(/(?=\d\.\s)/).filter(t => t.trim().length > 0).map((point, i) => (
-                  <span key={i} style={{ display: "block", marginBottom: i < 2 ? 8 : 0 }}>{point.trim()}</span>
-                ))}
-              </p>
+              <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.7 }}>
+                {aiSuggestion
+                  .split('\n')
+                  .map((line: string) => line.trim())
+                  .filter((line: string) => line.length > 0)
+                  .map((point: string, i: number) => (
+                    <p key={i} style={{ margin: 0, marginBottom: 6 }}>{point}</p>
+                  ))}
+              </div>
             ) : (
               <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", margin: 0 }}>No suggestion available.</p>
             )}
@@ -514,9 +524,11 @@ export function SurveyDetailModal({
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, textAlign: "center", fontSize: 10, color: "#9ca3af" }}>
             Smart Financial Planner Admin Report · Exported {new Date().toLocaleDateString("en-MY", { year: "numeric", month: "long", day: "numeric" })} · Confidential
           </div>
+          {/* Spacer — forces html-to-image bounding box to include the footer */}
+          <div style={{ height: 64, width: "100%", flexShrink: 0 }} aria-hidden="true" />
         </div>
         </div>
-      </>
+      </div>
     )}
     </>
   )

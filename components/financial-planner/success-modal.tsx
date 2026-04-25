@@ -4,10 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Download, RotateCcw, Sparkles } from "lucide-react"
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts"
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts"
 import type { FormData } from "./types"
-
-const PDF_TEMPLATE_ID = "success-pdf-template"
 
 interface SuccessModalProps {
   open: boolean
@@ -25,6 +23,7 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
   const [pdfLoading, setPdfLoading] = useState(false)
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const captureRef = useRef<HTMLDivElement>(null)
+  const pdfRef = useRef<HTMLDivElement>(null)
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat("en-MY", { style: "currency", currency: "MYR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount)
@@ -104,15 +103,17 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
     setIsGeneratingPDF(true)
     setPdfLoading(true)
     try {
-      // Wait for React to render the template and Recharts to animate
-      await new Promise((resolve) => setTimeout(resolve, 500))
-      const el = document.getElementById(PDF_TEMPLATE_ID)
-      if (!el) throw new Error("PDF template element not found in DOM")
+      const element = pdfRef.current
+      if (!element) return
+      await new Promise((resolve) => setTimeout(resolve, 300))
       const [{ default: jsPDF }, { toPng }] = await Promise.all([
         import("jspdf"),
         import("html-to-image"),
       ])
-      const dataUrl = await toPng(el, { quality: 0.95 })
+      const dataUrl = await toPng(element, {
+        quality: 0.95,
+        pixelRatio: 2,
+      })
       const img = new Image()
       img.src = dataUrl
       await new Promise((resolve) => { img.onload = resolve })
@@ -203,16 +204,17 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
           {pieData.length > 0 && (
             <div className="p-4 bg-secondary/30 rounded-xl">
               <h4 className="font-semibold text-foreground text-sm mb-2">Budget Distribution</h4>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart margin={{ top: 40, right: 30, bottom: 30, left: 30 }}>
+              <ResponsiveContainer width="100%" height={280}>
+                <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={55}
-                    outerRadius={90}
+                    innerRadius={65}
+                    outerRadius={110}
                     paddingAngle={3}
                     dataKey="value"
+                    label={false}
                   >
                     {pieData.map((_, i) => (
                       <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -222,9 +224,22 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
                     formatter={(value: number) => formatCurrency(value)}
                     contentStyle={{ borderRadius: "8px", fontSize: "12px" }}
                   />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="mt-4 flex flex-col gap-1 w-full">
+                {pieData.map((entry, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+                      <span className="font-medium text-gray-700">{entry.name}</span>
+                    </div>
+                    <span className="text-gray-600 tabular-nums">
+                      RM {entry.value.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                      {pieData.reduce((s, d) => s + d.value, 0) > 0 && ` (${(entry.value / pieData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)`}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -261,11 +276,15 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
               </div>
             ) : aiSummary ? (
               <div className="space-y-3">
-                {aiSummary.split(/(?=\d\.\s)/).filter(text => text.trim().length > 0).map((point, index) => (
-                  <p key={index} className={`text-sm leading-relaxed ${remainingBudget < 0 ? "text-red-900" : "text-indigo-800"}`}>
-                    {point.trim()}
-                  </p>
-                ))}
+                {aiSummary
+                  .split('\n')
+                  .map(line => line.trim())
+                  .filter(line => line.length > 0)
+                  .map((point, index) => (
+                    <p key={index} className={`text-sm leading-relaxed ${remainingBudget < 0 ? "text-red-900" : "text-indigo-800"}`}>
+                      {point}
+                    </p>
+                  ))}
               </div>
             ) : (
               <p className={`text-sm italic ${remainingBudget < 0 ? "text-red-700" : "text-indigo-700"}`}>
@@ -295,23 +314,19 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
       </DialogContent>
     </Dialog>
 
-    {/* PDF template + overlay: only mounted when the user clicks Download PDF */}
+    {/* Spinner overlay */}
     {isGeneratingPDF && (
-      <>
-        {/* Full-screen overlay so the user sees a spinner, not the raw template */}
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70">
-          <div className="flex flex-col items-center gap-3 rounded-xl bg-white px-8 py-6 shadow-2xl">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
-            <p className="text-sm font-semibold text-gray-700">Generating Official Report…</p>
-          </div>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70">
+        <div className="flex flex-col items-center gap-3 rounded-xl bg-white px-8 py-6 shadow-2xl">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+          <p className="text-sm font-semibold text-gray-700">Generating Official Report…</p>
         </div>
-        {/* PDF template at full opacity so html-to-image can capture it */}
-        <div
-          id={PDF_TEMPLATE_ID}
-          className="absolute top-0 left-0 z-40 w-[800px] h-[1131px] bg-white text-black overflow-hidden"
-          style={{ fontFamily: "sans-serif", color: "#111827" }}
-        >
-      <div style={{ padding: "40px 48px 0" }}>
+      </div>
+    )}
+    {/* Hidden PDF template — fixed off-screen so the browser fully renders it; html-to-image captures the full scrollHeight */}
+    <div className="fixed top-0 left-[-9999px] z-[-50]">
+      <div ref={pdfRef} className="w-[1000px] h-max bg-white" style={{ fontFamily: "sans-serif", color: "#111827" }}>
+      <div style={{ padding: "48px 60px" }}>
         {/* Header */}
         <div style={{ borderBottom: "3px solid #6366f1", paddingBottom: 16, marginBottom: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
@@ -428,58 +443,72 @@ export function SuccessModal({ open, onClose, onReset, data }: SuccessModalProps
 
         {/* Pie chart — fixed dimensions, SVG labels, custom HTML legend, animation off */}
         {pieData.length > 0 && (
-          <div style={{ marginBottom: 20, height: 450, display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <div style={{ marginBottom: 20, display: "flex", flexDirection: "column", alignItems: "center" }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: "#1e1b4b", marginBottom: 8, alignSelf: "flex-start" }}>Budget Distribution</p>
-            <PieChart width={440} height={360} margin={{ top: 40, right: 60, bottom: 30, left: 60 }}>
+            <PieChart width={700} height={300} margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
               <Pie
                 data={pieData}
-                cx={220}
-                cy={160}
-                innerRadius={65}
-                outerRadius={90}
+                cx="50%"
+                cy="50%"
+                innerRadius={80}
+                outerRadius={130}
                 paddingAngle={3}
                 dataKey="value"
                 isAnimationActive={false}
-                label={({ name, value }: { name: string; value: number }) => `${name}: ${formatCurrency(value)}`}
-                labelLine={true}
+                label={false}
               >
                 {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
               </Pie>
             </PieChart>
-            {/* Custom HTML legend — renders reliably in html-to-image */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 24, fontSize: 12, fontWeight: 600, color: "#374151", marginTop: 8 }}>
+            {/* Rich data legend */}
+            <div style={{ width: "100%", maxWidth: 420, marginTop: 16 }}>
               {pieData.map((entry, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
-                  {entry.name}
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "6px 0", borderBottom: i < pieData.length - 1 ? "1px solid #f3f4f6" : "none" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ display: "inline-block", width: 12, height: 12, borderRadius: "50%", backgroundColor: PIE_COLORS[i % PIE_COLORS.length], flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, color: "#374151" }}>{entry.name}</span>
+                  </div>
+                  <span style={{ color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
+                    RM {entry.value.toLocaleString('en-MY', { minimumFractionDigits: 2 })}
+                    {pieData.reduce((s, d) => s + d.value, 0) > 0 ? ` (${(entry.value / pieData.reduce((s, d) => s + d.value, 0) * 100).toFixed(1)}%)` : ""}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* AI suggestion */}
-        {(aiSummary || remainingBudget > 0) && (
-          <div style={{ backgroundColor: "#eef2ff", borderRadius: 10, padding: "14px 20px", marginBottom: 20, borderLeft: "4px solid #6366f1" }}>
-            <p style={{ fontSize: 12, fontWeight: 700, color: "#4338ca", marginBottom: 6 }}>AI Advisor Suggestion</p>
-            <p style={{ fontSize: 12, color: "#374151", lineHeight: 1.7, margin: 0, whiteSpace: "pre-wrap" }}>
+        {/* AI suggestion — always rendered, matches admin pattern */}
+        <div style={{ backgroundColor: "#eef2ff", borderRadius: 10, padding: "14px 20px", marginBottom: 20, borderLeft: "4px solid #6366f1" }}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: "#4338ca", marginBottom: 6 }}>AI Advisor Suggestion</p>
+          {aiSummary ? (
+            <div style={{ fontSize: 12, color: "#374151", lineHeight: 1.7 }}>
               {aiSummary
-                ? aiSummary.split(/(?=\d\.\s)/).filter(t => t.trim().length > 0).map((point, i) => (
-                    <span key={i} style={{ display: "block", marginBottom: i < 2 ? 8 : 0 }}>{point.trim()}</span>
-                  ))
+                  .split('\n')
+                  .map((line: string) => line.trim())
+                  .filter((line: string) => line.length > 0)
+                  .map((point: string, i: number) => (
+                    <p key={i} style={{ margin: 0, marginBottom: 6 }}>{point}</p>
+                  ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "#6b7280", fontStyle: "italic", margin: 0 }}>
+              {remainingBudget < 0
+                ? "You are spending more than you earn. Review your Wants and cut non-essential items."
                 : "Consider directing your unallocated funds into an emergency fund or boosting your savings to reach the 20% target."}
             </p>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Footer */}
         <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, textAlign: "center", fontSize: 10, color: "#9ca3af" }}>
           Generated by Smart Financial Planner · {new Date().toLocaleDateString("en-MY", { year: "numeric", month: "long", day: "numeric" })} · For personal planning purposes only.
         </div>
+        {/* Spacer — forces html-to-image bounding box to include the footer */}
+        <div style={{ height: 64, width: "100%", flexShrink: 0 }} aria-hidden="true" />
       </div>
-        </div>
-      </>
-    )}
+      </div>
+    </div>
     </>
   )
 }
