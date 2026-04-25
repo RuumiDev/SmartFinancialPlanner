@@ -46,7 +46,7 @@ export function SurveyDetailModal({
         import("jspdf"),
         import("html-to-image"),
       ])
-      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: "#ffffff" })
+      const dataUrl = await toPng(el, { pixelRatio: 2, backgroundColor: "#ffffff", height: el.scrollHeight })
       const img = new Image()
       img.src = dataUrl
       await new Promise((resolve) => { img.onload = resolve })
@@ -301,8 +301,8 @@ export function SurveyDetailModal({
         {/* PDF template rendered at full opacity for html-to-image */}
         <div
           id={ADMIN_PDF_TEMPLATE_ID}
-          className="fixed top-0 left-0 z-[9998] w-[800px] bg-white text-black"
-          style={{ fontFamily: "sans-serif", color: "#111827", height: "auto", minHeight: "max-content", paddingBottom: 96 }}
+          className="fixed top-0 left-0 z-[9998] w-[800px] h-fit bg-white text-black"
+          style={{ fontFamily: "sans-serif", color: "#111827" }}
         >
         <div style={{ padding: "40px 48px" }}>
           {/* Header */}
@@ -433,6 +433,8 @@ export function SurveyDetailModal({
           <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 12, textAlign: "center", fontSize: 10, color: "#9ca3af" }}>
             Smart Financial Planner Admin Report · Exported {new Date().toLocaleDateString("en-MY", { year: "numeric", month: "long", day: "numeric" })} · Confidential
           </div>
+          {/* Physical spacer — prevents html-to-image from clipping the last element */}
+          <div className="h-12 w-full shrink-0" />
         </div>
         </div>
       </>
