@@ -190,7 +190,7 @@ export function StepSavings({ data, updateData }: StepSavingsProps) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-3">
                       <div className="space-y-1">
                         <Label htmlFor={key} className="text-xs text-muted-foreground">
                           Monthly Contribution
@@ -206,7 +206,7 @@ export function StepSavings({ data, updateData }: StepSavingsProps) {
                             min={0}
                             value={savingsAllocations[key as keyof typeof savingsAllocations] || ""}
                             onChange={(e) => handleSavingsChange(key as keyof typeof savingsAllocations, e.target.value)}
-                            className="h-11 pl-10"
+                            className="h-11 pl-10 w-full"
                           />
                         </div>
                       </div>
@@ -225,7 +225,7 @@ export function StepSavings({ data, updateData }: StepSavingsProps) {
                             step={0.1}
                             value={customRates[key] ?? defaultRate}
                             onChange={(e) => handleRateChange(key, e.target.value)}
-                            className="h-11 pr-8"
+                            className="h-11 pr-8 w-full"
                           />
                           <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">
                             %
@@ -262,7 +262,7 @@ export function StepSavings({ data, updateData }: StepSavingsProps) {
                           <X className="w-4 h-4" />
                         </button>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 text-sm">
+                      <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
                         <div>
                           <p className="text-xs text-muted-foreground">Monthly</p>
                           <p className="font-semibold text-foreground">{formatCurrency(item.amount)}</p>
@@ -286,41 +286,42 @@ export function StepSavings({ data, updateData }: StepSavingsProps) {
               {/* Add custom investment / savings */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Add Investment / Savings</Label>
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                   <Input
                     placeholder="Fund name"
                     value={newItemName}
                     onChange={(e) => setNewItemName(e.target.value)}
-                    className="flex-1 min-w-28 h-10"
+                    className="w-full h-10 sm:flex-1 sm:min-w-28"
                     onKeyDown={(e) => e.key === "Enter" && addCustomVehicle()}
                   />
-                  <div className="relative w-28">
+                  <div className="relative w-full sm:w-28">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">RM</span>
                     <Input
                       type="number" placeholder="0" min={0}
                       value={newItemAmount}
                       onChange={(e) => setNewItemAmount(e.target.value)}
-                      className="h-10 pl-10"
+                      className="h-10 pl-10 w-full"
                       onKeyDown={(e) => e.key === "Enter" && addCustomVehicle()}
                     />
                   </div>
-                  <div className="relative w-24">
+                  <div className="relative w-full sm:w-24">
                     <Input
                       type="number" placeholder="% p.a." min={0} max={100} step={0.1}
                       value={newItemRate}
                       onChange={(e) => setNewItemRate(e.target.value)}
-                      className="h-10 pr-7"
+                      className="h-10 pr-7 w-full"
                       onKeyDown={(e) => e.key === "Enter" && addCustomVehicle()}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                   </div>
                   <Button
-                    type="button" variant="outline" size="icon"
+                    type="button" variant="outline"
                     onClick={addCustomVehicle}
                     disabled={!newItemName.trim() || !newItemAmount}
-                    className="h-10 w-10 shrink-0"
+                    className="h-10 w-full sm:w-10 sm:shrink-0"
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-4 h-4 sm:mx-auto" />
+                    <span className="sm:hidden ml-2">Add Investment</span>
                   </Button>
                 </div>
               </div>
