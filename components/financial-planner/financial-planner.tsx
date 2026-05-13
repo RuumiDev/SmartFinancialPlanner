@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from "react"
 import Swal from "sweetalert2"
 import { addDoc, collection, doc, serverTimestamp, setDoc } from "firebase/firestore"
-import { onAuthStateChanged, getRedirectResult } from "firebase/auth"
+import { onAuthStateChanged } from "firebase/auth"
 import { db, auth } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -29,17 +29,8 @@ export function FinancialPlanner() {
   const [formData, setFormData] = useState<FormData>(initialFormData)
   const [showSuccess, setShowSuccess] = useState(false)
 
-  // Resolve redirect auth on mount, then subscribe to auth state
+  // Subscribe to auth state on mount
   useEffect(() => {
-    const init = async () => {
-      try {
-        await getRedirectResult(auth)
-      } catch (err) {
-        console.error("[Auth] getRedirectResult error:", err)
-      }
-    }
-    init()
-
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsLoggedIn(true)

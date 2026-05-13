@@ -138,18 +138,18 @@ export function StepSavings({ data, updateData }: StepSavingsProps) {
 
       <Card className="bg-chart-3/10 border-chart-3/20">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-chart-3/20 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-chart-3/20 flex items-center justify-center shrink-0">
                 <PiggyBank className="w-6 h-6 text-chart-3" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Target Savings (20%)</p>
-                <p className="text-2xl font-bold text-chart-3">{formatCurrency(targetSavings)}</p>
+                <p className="text-xl font-bold text-chart-3">{formatCurrency(targetSavings)}</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground flex items-center gap-1 justify-end">
+            <div className="sm:text-right">
+              <p className="text-sm text-muted-foreground flex items-center gap-1 sm:justify-end">
                 <Clock className="w-3 h-3" />
                 {yearsToPension} years to pension
               </p>

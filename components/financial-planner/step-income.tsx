@@ -63,17 +63,17 @@ export function StepIncome({ data, updateData }: StepIncomeProps) {
               <CardContent className="p-0">
                 <div className="flex items-center">
                   <div className="w-2 h-full min-h-[80px] bg-chart-1" />
-                  <div className="flex-1 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-chart-1/20 flex items-center justify-center">
+                  <div className="flex-1 p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-chart-1/20 flex items-center justify-center shrink-0">
                         <Home className="w-5 h-5 text-chart-1" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm text-muted-foreground">Needs</p>
                         <p className="font-semibold text-foreground">50% of Income</p>
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-chart-1">{formatCurrency(needs)}</p>
+                    <p className="text-lg font-bold text-chart-1 shrink-0 text-right">{formatCurrency(needs)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -83,17 +83,17 @@ export function StepIncome({ data, updateData }: StepIncomeProps) {
               <CardContent className="p-0">
                 <div className="flex items-center">
                   <div className="w-2 h-full min-h-[80px] bg-chart-2" />
-                  <div className="flex-1 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-chart-2/20 flex items-center justify-center">
+                  <div className="flex-1 p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-chart-2/20 flex items-center justify-center shrink-0">
                         <ShoppingBag className="w-5 h-5 text-chart-2" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm text-muted-foreground">Wants</p>
                         <p className="font-semibold text-foreground">30% of Income</p>
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-chart-2">{formatCurrency(wants)}</p>
+                    <p className="text-lg font-bold text-chart-2 shrink-0 text-right">{formatCurrency(wants)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -103,17 +103,17 @@ export function StepIncome({ data, updateData }: StepIncomeProps) {
               <CardContent className="p-0">
                 <div className="flex items-center">
                   <div className="w-2 h-full min-h-[80px] bg-chart-3" />
-                  <div className="flex-1 p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-chart-3/20 flex items-center justify-center">
+                  <div className="flex-1 p-4 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-chart-3/20 flex items-center justify-center shrink-0">
                         <PiggyBank className="w-5 h-5 text-chart-3" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <p className="text-sm text-muted-foreground">Savings</p>
                         <p className="font-semibold text-foreground">20% of Income</p>
                       </div>
                     </div>
-                    <p className="text-xl font-bold text-chart-3">{formatCurrency(savings)}</p>
+                    <p className="text-lg font-bold text-chart-3 shrink-0 text-right">{formatCurrency(savings)}</p>
                   </div>
                 </div>
               </CardContent>

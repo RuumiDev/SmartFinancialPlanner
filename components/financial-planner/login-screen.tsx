@@ -1,12 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { signInWithPopup, signInWithRedirect } from "firebase/auth"
+import { signInWithPopup } from "firebase/auth"
 import { auth, googleProvider } from "@/lib/firebase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { TrendingUp } from "lucide-react"
-import { useIsMobile } from "@/components/ui/use-mobile"
 
 interface LoginScreenProps {
   onLogin: (user?: { uid?: string; email?: string | null; name?: string | null }) => void
@@ -16,20 +15,11 @@ interface LoginScreenProps {
 export function LoginScreen({ onLogin, isAuthLoading = false }: LoginScreenProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const isMobile = useIsMobile()
-
-  // getRedirectResult is now handled in financial-planner.tsx via onAuthStateChanged.
-  // No redirect handling needed here.
 
   const handleGoogleLogin = async () => {
     setLoading(true)
     setError(null)
     try {
-      if (isMobile) {
-        await signInWithRedirect(auth, googleProvider)
-        return
-      }
-
       const result = await signInWithPopup(auth, googleProvider)
       onLogin({
         uid: result.user.uid,
@@ -37,7 +27,12 @@ export function LoginScreen({ onLogin, isAuthLoading = false }: LoginScreenProps
         name: result.user.displayName,
       })
     } catch (err) {
-      setError((err as Error).message)
+      const code = (err as { code?: string }).code
+      if (code === "auth/popup-blocked") {
+        setError("Popup was blocked. Please allow popups for this site and try again.")
+      } else {
+        setError((err as Error).message)
+      }
     } finally {
       setLoading(false)
     }

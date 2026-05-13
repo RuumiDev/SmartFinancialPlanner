@@ -87,14 +87,14 @@ export function StepNeeds({ data, updateData }: StepNeedsProps) {
 
       <Card className="bg-primary/5 border-primary/20">
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Target Budget (50%)</p>
-              <p className="text-2xl font-bold text-primary">{formatCurrency(targetNeeds)}</p>
+              <p className="text-xl font-bold text-primary">{formatCurrency(targetNeeds)}</p>
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               <p className="text-sm text-muted-foreground">Remaining</p>
-              <p className={`text-2xl font-bold ${isOverBudget ? "text-destructive" : "text-accent"}`}>
+              <p className={`text-xl font-bold ${isOverBudget ? "text-destructive" : "text-accent"}`}>
                 {formatCurrency(Math.abs(remaining))}
                 {isOverBudget && " over"}
               </p>

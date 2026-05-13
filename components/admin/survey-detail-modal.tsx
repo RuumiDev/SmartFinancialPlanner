@@ -79,9 +79,28 @@ export function SurveyDetailModal({
         import("jspdf"),
         import("html-to-image"),
       ])
+      // Clone to document.body with static absolute positioning so height
+      // is not constrained by the viewport (fixed elements can be capped).
+      const probe = element.cloneNode(true) as HTMLElement
+      Object.assign(probe.style, {
+        position: "absolute",
+        top: "0",
+        left: "-99999px",
+        width: "1000px",
+        height: "auto",
+        maxHeight: "none",
+        overflow: "visible",
+        visibility: "hidden",
+      })
+      document.body.appendChild(probe)
+      const captureHeight = probe.offsetHeight
+      document.body.removeChild(probe)
+
       const dataUrl = await toPng(element, {
         quality: 0.95,
         pixelRatio: 2,
+        width: 1000,
+        height: captureHeight,
       })
       const img = new Image()
       img.src = dataUrl
